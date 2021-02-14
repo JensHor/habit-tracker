@@ -31,9 +31,12 @@ dependencies:
   firebase_auth: ^0.20.0+1
   firebase_core: ^0.7.0
   flutter_bloc: ^6.1.1
+  font_awesome: ^5.10.1
   font_awesome_flutter: ^8.11.0
   formz: ^0.3.2
+  google_fonts: ^1.1.2
   google_sign_in: ^4.5.9
+  intl: ^0.16.1
   pedantic: ^1.9.2
 
 dev_dependencies:

@@ -11,24 +11,20 @@ import '../mocks/date_time_provider_mock.dart';
 import '../mocks/repository_mock_helper.dart';
 import '../mocks/repository_mocks.dart';
 
-// TODO this code is copied from HabitTemplateBlocTest
 final Id defaultId = Id('1');
-final String defaultTemplateName = 'Test Habit';
+final String defaultName = 'Test Habit';
 
 main() {
   group('HabitBloc', () {
-    // TODO see HabitTemplateBlocTest for details about this methods
-    // test is required, however the code is similar to that in HabitTemplateBlocTest
-    testDefaultHabitLoaded();
-    // testAddTemplate();
-    // testDeleteTemplate();
-    // testChangeTemplate();
-
+    testHabitLoaded();
+    testHabitAdded();
+    testHabitDeleted();
+    testHabitChanged();
     testCompletionToggled();
   });
 }
 
-void testDefaultHabitLoaded() {
+void testHabitLoaded() {
   DateTime date = DateTime.now();
   Habit habit = Habit(
     id: Id.fromDate(
@@ -42,10 +38,10 @@ void testDefaultHabitLoaded() {
     repository: MockHabitRepository(),
   );
   mockHelper.setupGetStreamOfItems();
-  mockHelper.addItemsToStream([]);
+  mockHelper.addItemToStream(habit);
 
   blocTest(
-    'emits [default Habit] when HabitsLoading is called.',
+    'emits [Habit] when HabitsLoading is called.',
     build: () => HabitBloc(
       repository: mockHelper.repository,
       dateTimeProvider: dateTimeProvider,
@@ -55,6 +51,141 @@ void testDefaultHabitLoaded() {
       HabitState.loading(),
       HabitState.loaded(
         HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
+      ),
+    ],
+  );
+}
+
+void testHabitAdded() {
+  DateTime date = DateTime.now();
+  Habit habit = Habit(
+    id: Id.fromDate(
+      date: date,
+    ),
+  );
+
+  DateTimeProvider dateTimeProvider = DateTimeProviderMock();
+  when(dateTimeProvider.getCurrentTime()).thenReturn(date);
+  RepositoryMockHelper<Habit> mockHelper = RepositoryMockHelper<Habit>(
+    repository: MockHabitRepository(),
+  );
+  mockHelper.setupAddItem(habit);
+  mockHelper.setupGetStreamOfItems();
+
+  blocTest(
+    'emits [Habit] when HabitAdded is called.',
+    build: () => HabitBloc(
+      repository: mockHelper.repository,
+      dateTimeProvider: dateTimeProvider,
+      state: HabitState.loaded(
+        HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
+      ),
+    ),
+    act: (HabitBloc bloc) => bloc
+      ..add(HabitsLoading())
+      ..add(
+        HabitAdded(habit),
+      ),
+    expect: [
+      HabitState.loading(),
+      HabitState.loaded(
+        HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
+      ),
+    ],
+  );
+}
+
+void testHabitDeleted() {
+  DateTime date = DateTime.now();
+  Habit habit = Habit(
+    id: defaultId,
+  );
+
+  DateTimeProvider dateTimeProvider = DateTimeProviderMock();
+  when(dateTimeProvider.getCurrentTime()).thenReturn(date);
+  RepositoryMockHelper<Habit> mockHelper = RepositoryMockHelper<Habit>(
+    repository: MockHabitRepository(),
+  );
+  mockHelper.setupDeleteItem(
+    habit,
+    itemsReturnedByStream: [],
+  );
+  mockHelper.setupGetStreamOfItems();
+
+  blocTest(
+    'emits [] when HabitDeleted is called.',
+    build: () => HabitBloc(
+      repository: mockHelper.repository,
+      dateTimeProvider: dateTimeProvider,
+      state: HabitState.loaded(
+        HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
+      ),
+    ),
+    act: (HabitBloc bloc) => bloc
+      ..add(HabitsLoading())
+      ..add(
+        HabitDeleted(habit),
+      ),
+    expect: [
+      HabitState.loading(),
+      HabitState.loaded(
+        HashMapHelper.createMapFromItems([]),
+        0,
+        0,
+      ),
+    ],
+  );
+}
+
+void testHabitChanged() {
+  DateTime date = DateTime.now();
+  Habit habit = Habit(id: defaultId, name: defaultName);
+  Habit changedHabit = habit.copyWith(name: '$defaultName new');
+
+  DateTimeProvider dateTimeProvider = DateTimeProviderMock();
+  when(dateTimeProvider.getCurrentTime()).thenReturn(date);
+  RepositoryMockHelper<Habit> mockHelper = RepositoryMockHelper<Habit>(
+    repository: MockHabitRepository(),
+  );
+  mockHelper.setupDeleteItem(
+    habit,
+    itemsReturnedByStream: [],
+  );
+  mockHelper.setupGetStreamOfItems();
+  mockHelper.setupUpdateItem(
+    changedHabit,
+  );
+
+  blocTest(
+    'emits [] when HabitChanged is called.',
+    build: () => HabitBloc(
+      repository: mockHelper.repository,
+      dateTimeProvider: dateTimeProvider,
+      state: HabitState.loaded(
+        HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
+      ),
+    ),
+    act: (HabitBloc bloc) => bloc
+      ..add(HabitsLoading())
+      ..add(
+        HabitChanged(changedHabit),
+      ),
+    expect: [
+      HabitState.loading(),
+      HabitState.loaded(
+        HashMapHelper.createMapFromItem(changedHabit),
+        1,
+        1,
       ),
     ],
   );
@@ -62,11 +193,11 @@ void testDefaultHabitLoaded() {
 
 void testCompletionToggled() {
   DateTime changedDate = DateTime.now();
-  Habit habit = Habit(name: defaultTemplateName, id: defaultId);
-  Habit expectedHabit = habit.copyWith(completionTime: changedDate);
+  Habit habit = Habit(name: defaultName, id: defaultId);
+  Habit expectedHabit = habit.copyWith(completionTimes: [changedDate]);
 
   DateTimeProvider dateTimeProvider = DateTimeProviderMock();
-  when(dateTimeProvider.getCurrentTime()).thenReturn(changedDate);
+  when(dateTimeProvider.getCurrentDay()).thenReturn(changedDate);
   RepositoryMockHelper<Habit> mockHelper = RepositoryMockHelper<Habit>(
     repository: MockHabitRepository(),
   );
@@ -83,17 +214,23 @@ void testCompletionToggled() {
       dateTimeProvider: dateTimeProvider,
       state: HabitState.loaded(
         HashMapHelper.createMapFromItem(habit),
+        1,
+        1,
       ),
     ),
     act: (HabitBloc bloc) => bloc
       ..add(HabitsLoading())
       ..add(
-        HabitCompletionToggled(habit: habit),
+        HabitCompletionToggled(
+          habit: habit,
+        ),
       ),
     expect: [
       HabitState.loading(),
       HabitState.loaded(
         HashMapHelper.createMapFromItem(expectedHabit),
+        1,
+        1,
       ),
     ],
   );
